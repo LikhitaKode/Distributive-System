@@ -1,0 +1,154 @@
+/**
+ *	myftp.java is a Client
+ *
+ * 		Author : Likhita Kode
+ **/
+
+import java.net.*;
+import java.util.Scanner;
+import java.io.*;
+
+public class myftp {
+	static InputStream s1In;
+	static DataInputStream dis;
+	static OutputStream s1out;
+	static DataOutputStream dos;
+	static String command,out;
+	static Scanner sc,sc1;
+
+	@SuppressWarnings("resource")
+	public static void main(String args[]) throws Exception {
+
+		sc1 = new Scanner(System.in);
+		//Ask for Host Name
+		System.out.println("Enter the Host Name: ");
+		String H=sc1.nextLine();
+
+		//Ask for port number 
+		System.out.println("Enter the port Number: ");
+		int Port=sc1.nextInt();
+
+		// Open your connection to a server, at specified host and port 
+		Socket s1 = new Socket(H,Port);
+
+		sc = new Scanner(System.in);		
+
+		s1out = s1.getOutputStream();
+		dos = new DataOutputStream (s1out);
+		s1In = s1.getInputStream();
+		dis = new DataInputStream(s1In);
+
+		do
+		{
+			System.out.println("FTP>");
+			command= sc.nextLine();
+			String[] C=command.split(" ");
+
+			if(command.contentEquals("quit"))
+			{
+				dos.writeUTF(command);
+				System.out.println("\tDisconnect Command Received ...");
+			}				
+			else if(command.contains("get"))
+			{
+				dos.writeUTF(command);
+				GETFile(C[1]);
+			}
+			else if(command.contains("put"))
+			{
+				dos.writeUTF(command);
+				PUTFile(C[1]);
+			}
+			else
+			{
+				dos.writeUTF(command);
+				out = dis.readUTF();
+				System.out.println(out);
+			}
+
+		}while(!command.contentEquals("quit"));
+	}
+
+	/**Put command will put the file to the server*/
+	static void PUTFile(String filename) throws Exception
+	{        
+		File f=new File(filename);
+		if(!f.exists()) {
+			System.out.println("File Not found on Client !!!");
+			dos.writeUTF("File not found on Client");
+		}
+		else if(f.exists())
+		{
+			dos.writeUTF(filename);
+
+			System.out.println("Sending File To Server...");
+
+			String Servermsg=dis.readUTF();
+			if(Servermsg.compareTo("File Already Exists on Server")==0)	{
+				System.out.println("File Already Exists on Server");
+			}
+			else if(Servermsg.compareTo("File Already Exists on Server")!=0)
+			{
+				FileInputStream fin=new FileInputStream(f);
+				int ch=0;
+				while(ch!=-1)		
+				{
+					ch=fin.read();
+					dos.writeUTF(String.valueOf(ch));
+				}
+				fin.close();
+				System.out.println(dis.readUTF());
+			}
+		}
+	}
+
+	/**Get command will get the file from the server*/		
+	static void GETFile(String fileName) throws Exception
+	{
+		dos.writeUTF(fileName);
+		String Servermsg=dis.readUTF();
+
+		if(Servermsg.compareTo("File Not Found on Server")==0)
+		{
+			System.out.println("File not found on Server !!!");
+			return;
+		}
+		else if(Servermsg.compareTo("Ready to Send a File")==0)
+		{
+			System.out.println("Receiving a File from Server ...");
+			File f=new File(fileName);
+
+			if(f.exists())
+			{
+				dos.writeUTF("No");
+				System.out.println("This File Already Exists on Client");
+			}
+			else if(!f.exists())
+			{
+				dos.writeUTF("Yes");
+				
+				FileOutputStream fout=new FileOutputStream(f);
+				int ch=0;
+				String temp;
+				do
+				{
+					temp=dis.readUTF();
+					ch=Integer.parseInt(temp);
+					if(ch!=-1)
+					{
+						fout.write(ch);                    
+					}
+				}while(ch!=-1);
+				fout.close();
+				System.out.println(dis.readUTF());
+			}	
+			else
+			{
+				return;
+			}
+		}
+	}
+
+}
+
+
